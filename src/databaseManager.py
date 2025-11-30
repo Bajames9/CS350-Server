@@ -5,9 +5,9 @@ class _databaseManager():
 
 
     def __init__(self):
-        self.users = TinyDB('users.json')
-        self.msgs = TinyDB('msg.json')
-        self.groupChats = TinyDB('groupChats.json')
+        self.users = TinyDB('src/users.json')
+        self.msgs = TinyDB('src/msg.json')
+        self.groupChats = TinyDB('src/groupChats.json')
         self.lock = threading.RLock()
     
 

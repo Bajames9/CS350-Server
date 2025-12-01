@@ -4,7 +4,7 @@ import socket
 
 
 
-
+# stores information about a client
 class user():
 
     def __init__(self):

@@ -1,6 +1,7 @@
 from tinydb import TinyDB, Query
 import threading
 
+# used to interact with database
 class _databaseManager():
 
 
@@ -61,26 +62,22 @@ class _databaseManager():
             return json_obj
 
     def getAllChatNames(self,username):
-        names = set()  # use a set to avoid duplicates
+        names = set()
         Q = Query()
 
-        # ---- Private Chats ----
-        # Find all messages sent BY the user
+
         sent = self.msgs.search(Q.sender == username)
         for msg in sent:
             names.add(msg["receiver"])
 
-        # Find all messages received BY the user
         received = self.msgs.search(Q.receiver == username)
         for msg in received:
             names.add(msg["sender"])
 
-        # Remove the username itself if somehow present
         if username in names:
             names.remove(username)
 
-        # ---- Group Chats ----
-        # Find all groups where user is a member
+
         groups = self.groupChats.search(Q.users.any([username]))
         for g in groups:
             names.add(g["chatName"])

@@ -7,6 +7,10 @@ import json
 from user import user
 
 
+# main server code
+
+
+# handles a individual client connection
 def connectToClient(connectionSocket, addr):
     u = user()
     try:
@@ -44,14 +48,25 @@ def connectToClient(connectionSocket, addr):
         print("Server error:", e)
     finally:
         print("Closing connection to client.")
-        #server = user()
-        #server.update_user("Server Msg")
-        #commands.chat(connections.getUserInfo(u.get_user())["activeChat"],)
+
+        user_info = connections.getUserInfo(u.user)
+        if user_info and user_info.get("activeChat"):
+            msg = {
+                "command": "chat",
+                "name": user_info["activeChat"],
+                "msg": f"###{u.user} Has Left the Chat ###"
+            }
+            chat(msg, u)
+
+        # Remove the user from connections
         connections.removeUser(u.get_user())
 
+        # Close the socket
         connectionSocket.close()
 
 
+
+# used to process cmds sent from client
 def processCMD(msg, socket, user):
     try:
         print(msg["command"])
@@ -76,17 +91,34 @@ def processCMD(msg, socket, user):
                 print(json.dumps(json_obj))
                 socket.send(f"{json.dumps(json_obj)}\x1e".encode())
             case "chat":
-                json_obj = commands.chat(msg["name"],user,msg["msg"])
-                if json_obj["type"] == "P":
-                    updateChat(msg["name"],user.get_user())
-                elif json_obj["type"] == "G":
-                    updateChats(msg["name"])
-                print(json.dumps(json_obj))
-                socket.send(f"{json.dumps(json_obj)}\x1e".encode())
+                chat(msg, user)
             case "getChatNames":
                 json_obj = commands.getAllChatName(user)
                 print(json.dumps(json_obj))
                 socket.send(f"{json.dumps(json_obj)}\x1e".encode())
+            case "quit":
+                print(f"User {user.get_user()} requested to quit.")
+
+
+                if user.user in connections.userMap:
+                    active_chat = connections.getUserInfo(user.user)["activeChat"]
+                    if active_chat:
+                        leave_msg = {
+                            "command": "chat",
+                            "name": active_chat,
+                            "msg": "### Has Left the Chat ###"
+                        }
+                        chat(leave_msg, user)
+
+                    # Remove user from connections
+                connections.removeUser(user.get_user())
+
+                # Close the socket
+                socket.close()
+
+
+                return
+
 
 
 
@@ -97,6 +129,20 @@ def processCMD(msg, socket, user):
         print("Raw cmd was:", msg)
 
 
+# used to send chat cmd
+def chat(msg, user_obj):
+    json_obj = commands.chat(msg["name"], user_obj, msg["msg"])
+
+    if json_obj["type"] == "P":
+        updateChat(msg["name"], user_obj.get_user())
+    elif json_obj["type"] == "G":
+        updateChats(msg["name"])
+    print(json.dumps(json_obj))
+    user_info = connections.getUserInfo(user_obj.user)
+    if user_info:
+        user_info["connection"].send(f"{json.dumps(json_obj)}\x1e".encode())
+
+#used to update user
 def updateChat(recipient, chat):
     json_obj = {
         "command": "update",
@@ -110,12 +156,14 @@ def updateChat(recipient, chat):
             print(f"[Disconnected] Removing user '{recipient}': {e}")
             connections.removeUser(recipient)
 
-
+# used to update multiple users
 def updateChats(chatName):
     for username, user_info in connections.userMap.items():
         if user_info["activeChat"] == chatName:
             updateChat(username,chatName)
 
+
+# makes connection to client and waits for new connections
 def server():
     print("Server Start")
     # port and socket for incoming connections

@@ -1,6 +1,9 @@
 from databaseManager import database
 import json
 
+
+
+# layer between server code and database to run commands and generate responses
 class _commands():
 
     def login(self, username, user):
